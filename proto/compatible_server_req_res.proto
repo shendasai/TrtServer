@@ -1,0 +1,67 @@
+package ProtoContent;
+
+message TitleTerms
+{
+	repeated uint32 docid = 1;
+	repeated bytes words = 2;
+}
+
+message Keywords{
+	repeated uint32 words_1 = 1;
+	repeated uint32 words_2 = 2;
+}
+
+message NewKeywords{
+    repeated bytes words = 1;
+    repeated uint32 importance = 2;
+    repeated uint32 order = 3;
+}
+
+message Summarys{
+    repeated bytes words = 1;
+}
+
+message GpuRequest
+{
+	required uint32 request_id = 1;
+	repeated TitleTerms dnn_words = 2;
+	repeated TitleTerms cnn_words = 3;
+	repeated bytes exp_id = 4;
+	repeated string run_graphes = 5;
+	repeated string urls = 6;
+	repeated Keywords keywords = 7;
+	repeated uint64 pc_1 = 8;
+	repeated uint64 pc_2 = 9;
+	repeated NewKeywords newkeywords = 10;
+	repeated Summarys summary = 11;
+}
+
+message FeatureResult
+{
+	required uint32 feature_id = 1;
+	required float feature_score = 2;
+}
+
+message QueryFeature
+{
+	required uint32 feature_id = 1;
+	repeated float feature_score = 2;
+}
+
+message GpuResultDoc
+{
+	repeated uint32 docid = 1;	// only used by hangzhou wenda/lizhi
+	required float dnn_5000 = 2;
+	required float dnn_5001 = 3;
+	required float dnn_5002 = 4;
+	required float dnn_5003 = 5;
+	repeated FeatureResult features = 6;
+}
+
+message GpuResult
+{
+	required uint32 request_id = 1;
+	repeated GpuResultDoc doc = 2;
+	optional int32 dnn_version = 3;
+	repeated QueryFeature query_features = 4;
+}
