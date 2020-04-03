@@ -11,7 +11,7 @@ namespace bert{
 void BertQA::init(string weightsPath)
 {
     //1. load weight
-//    cudaSetDevice(getDeviceId());
+    cudaSetDevice(getDeviceId());
     cudaStreamCreate(&stream_);
     
     WeightMap weightMap;
@@ -64,7 +64,7 @@ void BertQA::init(string weightsPath)
 
 void BertQA::forward(Weights& inputIds, Weights& segmentIds, Weights& inputMasks, Dims& inputDims, std::vector<float>& output)
 {
-    //cudaSetDevice(getDeviceId());
+    cudaSetDevice(getDeviceId());
 
     std::vector<float> timesTotal(1);   // Total time
     std::vector<float> timesCompute(1); // Computation time
