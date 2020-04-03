@@ -21,7 +21,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g")
 project(cmake_and_cuda LANGUAGES CXX CUDA)
 
 find_package(OpenSSL REQUIRED)
-find_package(workflow REQUIRED CONFIG HINTS ..)
+#find_package(workflow REQUIRED CONFIG HINTS ..)
 include_directories(${OPENSSL_INCLUDE_DIR} ${WORKFLOW_INCLUDE_DIR} /usr/local/cuda-10.0/include ./bert_inc /home/odin/shendasai/TensorRT6/TensorRT-6.0.1.5/include/)
 link_directories(${WORKFLOW_LIB_DIR} /home/odin/shendasai/lib/protobuf/protobuf-3.8.0/src/.libs/ /usr/local/cuda-10.0/lib64 /home/odin/shendasai/TensorRT6/TensorRT-6.0.1.5/lib ./bert_lib /home/odin/shendasai/CUDNN_7.6.3/cuda/lib64)
 
@@ -54,7 +54,6 @@ include_directories(
     ./plugins
     ./util
     ../../include/
-    ../../samples/common/
     ../../third_party/cub/
     /usr/include/x86_64-linux-gnu
     /usr/local/cuda-10.0/include
@@ -62,12 +61,18 @@ include_directories(
     /workspace/tensorrt/samples/common
     /workspace/cub/
     /workspace/cutlass/
+    ./plugins/common
+    ./include/tensorrt/common
+    ./include/tensorrt/cub
+    ./include/tensorrt
+    ./include
 )
 
 link_directories(
     /usr/lib/x86_64-linux-gnu
     /usr/local/cuda-10.0/lib64
     /workspace/tensorrt/lib
+    ./lib
     /home/odin/shendasai/TensorRT6/TensorRT-6.0.1.5/lib
 )
 
@@ -107,9 +112,6 @@ add_executable(sample_bert
     sampleBERT.cpp
 )
 
-add_executable(http_gpu_server
-    server/tutorial-13-http_gpu_server.cpp ${PROTO}
-)
 
 target_compile_features(sample_bert PUBLIC cxx_std_11)
 
@@ -118,3 +120,7 @@ target_link_libraries(sample_bert
     bert_plugins
     bert
 )
+add_executable(http_gpu_server
+    server/tutorial-13-http_gpu_server.cc ${PROTO}
+)
+target_link_libraries(http_gpu_server workflow protobuf common bert bert_plugins pthread)
