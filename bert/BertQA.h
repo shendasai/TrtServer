@@ -55,6 +55,8 @@ public:
 	 ~BertQA(); 
 	 void init(string weightsPath);
 	 void forward(Weights& inputIds, Weights& segmentIds, Weights& inputMasks, Dims& inputDims, std::vector<float>& output);
+	 void forward2(Weights& inputIds, Weights& segmentIds, Weights& inputMasks, Dims& inputDims, 
+	 	          std::vector<float>& output,std::vector<float>& output2,std::vector<float>& output3, std::vector<float>& output4, std::vector<float>& output5);
 private:
 	#if 0
 	string dataDirs_;

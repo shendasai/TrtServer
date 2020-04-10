@@ -90,12 +90,22 @@ void BERTDriver::buildNetwork(nvinfer1::INetworkDefinition* network, const HostT
 
     ILayer* bertLayer = bertModelDynamic(config, weightMap, network, embeddings, maskIdx);
 
-    /// SQuAD Output Layer
-    //sds: update for hz
-    ILayer* squadLayer = squadDynamic("prediction_module_cls_", config, weightMap, network, bertLayer->getOutput(0));
-    //ILayer* squadLayer = squadDynamic("cls_", config, weightMap, network, bertLayer->getOutput(0));
+    // SQuAD Output logistics
+    std::map<std::string, ILayer*> mapLayers;
+    squadDynamic("cls_", config, weightMap, network, bertLayer->getOutput(0), mapLayers);
+    squadProb("start_", network, mapLayers["cls_start_logits"]->getOutput(0), mapLayers);
+    squadProb("end_", network, mapLayers["cls_end_logits"]->getOutput(0), mapLayers);
 
-    network->markOutput(*squadLayer->getOutput(0));
+
+    network->markOutput(*(mapLayers["cls_start_logits"]->getOutput(0)));
+    network->markOutput(*(mapLayers["cls_end_logits"]->getOutput(0)));
+    network->markOutput(*(mapLayers["start_prob"]->getOutput(0)));
+    network->markOutput(*(mapLayers["end_prob"]->getOutput(0)));
+
+
+    // SQuAD Output intend prob
+    ILayer* probLayer = predeictProb("", config, weightMap, network, bertLayer->getOutput(0));
+    network->markOutput(*probLayer->getOutput(0));
 #endif
     //network->markOutput(*embLayer->getOutput(0));
 }

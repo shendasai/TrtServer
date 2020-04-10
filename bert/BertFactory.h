@@ -32,6 +32,8 @@ public:
 	 virtual ~Bert(); 
 	 virtual void init(string weightsPath){};
 	 virtual void forward(Weights& inputIds, Weights& segmentIds, Weights& inputMasks, Dims& inputDims, std::vector<float>& output){};
+	 virtual void forward2(Weights& inputIds, Weights& segmentIds, Weights& inputMasks, Dims& inputDims, std::vector<float>& output,std::vector<float>& output2,std::vector<float>& output3
+	 							,std::vector<float>& output4, std::vector<float>& output5){};
 
      void setParam(int numHeads, int Bmax, int S, bool runInFp16);
 	 int getNumHeads();
@@ -39,8 +41,8 @@ public:
 	 int getS();
 	 bool getRunInFp16();
 	 int getDeviceId();
-	 string getOutputName();
-	 void setOutputName(string outputName);
+	 string getOutputName(int index);
+	 void addOutputName(string outputName);
 	 void setDeviceId(int deviceId);
 	 void lock(){pthread_mutex_lock(&mutex);};
 	 int trylock(){return pthread_mutex_trylock(&mutex);};
@@ -55,7 +57,8 @@ private:
 	//string saveEngine_; 
 	//const HostTensorMap inCfg_;
 	
-	string outputName_;
+	std::vector<string> outputName_;
+	string outputName2_;
 	pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;	
 	//pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 };

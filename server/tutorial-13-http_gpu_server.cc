@@ -22,6 +22,7 @@
 #include <arpa/inet.h>
 #include <signal.h>
 #include <unistd.h>
+#include <ctime>
 #include <fstream>
 #include <iostream>
 #include <stdlib.h>
@@ -29,6 +30,7 @@
 #include <string.h>
 #include <string>
 #include <thread>
+#include <chrono>
 #include <random>
 #include <google/protobuf/text_format.h>
 #include "workflow/HttpMessage.h"
@@ -38,9 +40,24 @@
 #include "compatible_server_req_res.pb.h"
 #include "BertFactory.h"
 #include "json.hpp"
+#include "rapidjson/stringbuffer.h"
+#include "rapidjson/writer.h"
+#include "rapidjson/document.h"
+#include "rapidjson/error/en.h"
+
+
 using namespace nvinfer1;
 using namespace bert;
 using nlohmann::json;
+using namespace rapidjson;
+const int tmp_batch_size = 8;
+const int tmp_sentence_len = 200;
+const int tmp_emb_len = 768;
+
+
+using namespace chrono;
+
+
 void parseDims(std::ifstream& input, const std::string& name, Dims& d)
 {
     const int n_dims = d.nbDims;
@@ -161,10 +178,10 @@ struct MMInput
     Weights inputIds;
     Weights inputMasks;
     Weights segmentIds;
-	vector<int> data_ids;
+    vector<int> data_ids;
     vector<int> data_masks;
     vector<int> data_segs;
-	Dims inputDims;
+    Dims inputDims;
     Bert* pBert;
 };
 
@@ -172,6 +189,11 @@ struct MMInput
 struct MMOutput
 {
     std::vector<float> output;
+    std::vector<float> output2;
+    std::vector<float> output3;
+    
+    std::vector<float> output4;
+    std::vector<float> output5;
 };
 
 vector<Bert*> pBertVec;
@@ -179,12 +201,13 @@ pthread_mutex_t mutex_ = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_ = PTHREAD_COND_INITIALIZER;
 Bert* createMyBert(int deviceId)
 {
-    string dataDir = "/home/odin/shendasai2/tensorrt6_/TensorRT/demo/BERT2/data_hz";
+    string dataDir = "./data_hz";
+    //string dataDir = "/home/odin/shendasai2/tensorrt6_/TensorRT/demo/BERT2/data_hz";
     const std::string weightsPath(dataDir+"/weight_path/bert.weights");
    
     const int numHeads = 12;
-    int S = 200;
-    int Bmax = 10;
+    int S = tmp_sentence_len;
+    int Bmax = tmp_batch_size;
 
     Bert* pBert = createBert("QA");
     pBert->setParam(numHeads,Bmax,S,true);
@@ -197,10 +220,10 @@ class MyBertIns
 {
 public:
     static Bert* get_instance(int deviceId)
-	{
-		static thread_local Bert* pBert = createMyBert(deviceId);
-		return pBert;
-	}
+{
+    static thread_local Bert* pBert = createMyBert(deviceId);
+    return pBert;
+}
 };
 
 void thread_function(int deviceId) {
@@ -225,37 +248,150 @@ typedef WFThreadTask<MMInput, MMOutput> MMTask;
 
 void http_callback(MMTask *task)
 {
-	int state = task->get_state();
-	SeriesWork *series = series_of(task);
-	tutorial_series_context *context =
-		(tutorial_series_context *)series->get_context();
-	HttpResponse *proxy_resp = context->proxy_task->get_resp();
+    auto start = system_clock::now();
+
+    int state = task->get_state();
+    SeriesWork *series = series_of(task);
+    tutorial_series_context *context =
+        (tutorial_series_context *)series->get_context();
+    HttpResponse *proxy_resp = context->proxy_task->get_resp();
 
 
     HttpRequest *req = context->proxy_task->get_req();
-	
-	char buf[8192];
-	int len;
-	len = snprintf(buf, 8192, "<p>%s %s %s</p>", req->get_method(),
-				   req->get_request_uri(), req->get_http_version());
-	proxy_resp->append_output_body(buf, len);
-	
-	
+
+    char buf[8192];
+    int len;
+    len = snprintf(buf, 8192, "<p>%s %s %s</p>", req->get_method(),
+            req->get_request_uri(), req->get_http_version());
+    proxy_resp->append_output_body(buf, len);
+
+
     MMOutput *pOutput = task->get_output();
     MMInput *pIn = task->get_input();
     assert(task->get_state() == WFT_STATE_SUCCESS);
 
+    int batch_size = tmp_batch_size;
+    int sentence_len = tmp_sentence_len;
+
+
+     
+#if 0
+    
+    json start_logits = json::array();
+    json end_logits = json::array();
+    json start_prob = json::array();
+    json end_prob = json::array();
+    json intent_prob = json::array();
+    for(int i = 0; i < batch_size; i++)
+    {
+
+    std::vector<float>::const_iterator first1 = pOutput->output.begin() + i*sentence_len;   
+    std::vector<float>::const_iterator last1  = pOutput->output.begin() + (i+1)*sentence_len; 
+    std::vector<float> cut1_vector(first1, last1);
+    start_logits[i] = json(cut1_vector);
+
+    std::vector<float>::const_iterator first2 = pOutput->output2.begin() + i*sentence_len;   
+    std::vector<float>::const_iterator last2  = pOutput->output2.begin() + (i+1)*sentence_len; 
+    std::vector<float> cut2_vector(first2, last2);
+    end_logits[i] = json(cut2_vector);
+
+        std::vector<float>::const_iterator first3 = pOutput->output3.begin() + i*sentence_len;   
+    std::vector<float>::const_iterator last3  = pOutput->output3.begin() + (i+1)*sentence_len; 
+    std::vector<float> cut3_vector(first3, last3);
+    start_prob[i] = json(cut3_vector);
+
+        std::vector<float>::const_iterator first4 = pOutput->output4.begin() + i*sentence_len;   
+    std::vector<float>::const_iterator last4   = pOutput->output4.begin() + (i+1)*sentence_len; 
+    std::vector<float> cut4_vector(first4, last4);
+    end_prob[i] = json(cut4_vector);
+
+        std::vector<float>::const_iterator first5 = pOutput->output5.begin() + i*3;   
+    std::vector<float>::const_iterator last5  = pOutput->output5.begin() + (i+1)*3; 
+    std::vector<float> cut5_vector(first5, last5);
+    intent_prob[i] = json(cut5_vector);
+
+    }
+    
+    json jResult = json({});
+    jResult["outputs"]["start_logits"] = start_logits;
+    jResult["outputs"]["end_logits"] = end_logits;
+    jResult["outputs"]["start_prob"] = start_prob;
+    jResult["outputs"]["end_prob"] = end_prob;
+    jResult["outputs"]["intent_prob"] = intent_prob;
+    proxy_resp->append_output_body(jResult.dump(2).c_str(), jResult.dump(2).size());
+ #else
+
+    #define writer_json_prob(wirter, name, pOut, ld) \
+        writer.Key(name); \
+        writer.StartArray();\
+        for(int i = 0; i < batch_size; i++)\
+        {\
+            writer.StartArray();\
+            int offset_ = i*ld;\
+            for(int j = 0; j < ld; j++)   \ 
+            {\
+                writer.Double(pOut[j + offset_]);\
+            }\
+            writer.EndArray(); \
+        }  \
+        writer.EndArray(); 
+    
+ 
+    rapidjson::StringBuffer strBuf;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(strBuf);
+    writer.StartObject();
+    writer.Key("outputs");  
+    
+    writer.StartObject();
+
+    writer_json_prob(writer, "start_logits", pOutput->output, sentence_len);
+    writer_json_prob(writer, "end_logits", pOutput->output2, sentence_len);
+    writer_json_prob(writer, "start_prob", pOutput->output3, sentence_len);
+    writer_json_prob(writer, "end_prob", pOutput->output4, sentence_len);
+    writer_json_prob(writer, "intent_prob", pOutput->output5, 3);
+
+    
+    writer.EndObject();   
+    writer.EndObject();
+    proxy_resp->append_output_body(strBuf.GetString(),  strBuf.GetSize());
+
+
+ #endif
+
+    
+
+
+    auto end   = system_clock::now();
+    auto duration = duration_cast<microseconds>(end - start);
+    printf(" reply time1 is %d ms. \n", (duration)/1000);
+
+    #if 0
     json jOut(pOutput->output);
-	proxy_resp->append_output_body(jOut.dump(2).c_str(), jOut.dump(2).size());
-	pIn->pBert->unlock();
-	//pthread_mutex_unlock(&mutex_);
+    proxy_resp->append_output_body(jOut.dump(2).c_str(), jOut.dump(2).size());
+    json jOut2(pOutput->output2);
+    proxy_resp->append_output_body(jOut2.dump(2).c_str(), jOut2.dump(2).size());
+    json jOut3(pOutput->output3);
+    proxy_resp->append_output_body(jOut3.dump(2).c_str(), jOut3.dump(2).size());
+
+    json jOut4(pOutput->output4);
+    proxy_resp->append_output_body(jOut4.dump(2).c_str(), jOut4.dump(2).size());
+    json jOut5(pOutput->output5);
+    proxy_resp->append_output_body(jOut5.dump(2).c_str(), jOut5.dump(2).size());
+
+    #endif
+    pIn->pBert->unlock();
+    //pthread_mutex_unlock(&mutex_);
 }
 void bert_forward(const MMInput *in, MMOutput *out)
 {
-    //in->pBert->forward(in->inputIds, in->segmentIds, in->inputMasks, in->inputDims, out->output);
-	std::thread::id id = std::this_thread::get_id();
-    std::cout << "cout ----- id : " << id << std::endl;
-	in->pBert->forward(((MMInput *)in)->inputIds, ((MMInput *)in)->segmentIds, ((MMInput *)in)->inputMasks, ((MMInput *)in)->inputDims, out->output);
+    auto start   = system_clock::now();
+
+    in->pBert->forward2(((MMInput *)in)->inputIds, ((MMInput *)in)->segmentIds, ((MMInput *)in)->inputMasks, ((MMInput *)in)->inputDims, 
+                    out->output, out->output2, out->output3, out->output4, out->output5);
+
+    auto end   = system_clock::now();
+    auto duration = duration_cast<microseconds>(end - start);
+    printf(" forward process time1 is %d ms. \n", (duration)/1000);
 }
 
 /*
@@ -283,46 +419,80 @@ void pwork_callback(const ParallelWork *pwork)
 		delete ctx;
 	}
 }*/
-const int deviceCounts =2;
+const int deviceCounts =1;
 default_random_engine e;
 Bert* getFreeBert(Bert** ppBert)
 {
-	#if 0
-	while(true)
-	{
-		for(int i = 0; i < deviceCounts ; i++)
-		{
-			if(ppBert[i]->trylock() == 0)
-			//if(pthread_mutex_trylock(&mutex_)==0)
-				return ppBert[i];
-		}
-		
-		
-		usleep(1000);
-	}
-	#else
-		int i = e()%deviceCounts;
-	    ppBert[i]->lock();
-	    return ppBert[i];
-	#endif
-	
+#if 0
+    while(true)
+    {
+    for(int i = 0; i < deviceCounts ; i++)
+    {
+    	if(ppBert[i]->trylock() == 0)
+    	//if(pthread_mutex_trylock(&mutex_)==0)
+    		return ppBert[i];
+    }
+
+
+    usleep(1000);
+    }
+#else
+    int i = e()%deviceCounts;
+    ppBert[i]->lock();
+    return ppBert[i];
+#endif
+
 }
 void process2(WFHttpTask *proxy_task, Bert** ppBert)
 {
-	//1 get req to json
-	HttpRequest *req = proxy_task->get_req();
-	const char* pChar = NULL;
-	size_t size_ = 0;
-	bool ret = req->get_parsed_body((const void **)&pChar, &size_);
-	auto js = json::parse(pChar);
-	
-	//2 create bert task
-	ParallelWork *pwork = Workflow::create_parallel_work(nullptr);
-	typedef WFThreadTaskFactory<MMInput, MMOutput> MMFactory;
-	MMTask *task = MMFactory::create_thread_task("bert_task",
-												 bert_forward,
-												 http_callback);
-    //3 create input & output
+    auto start   = system_clock::now();
+    
+
+    // 1   get req to json
+    HttpRequest *req = proxy_task->get_req();
+    const char* pChar = NULL;
+    size_t size_ = 0;
+    bool ret = req->get_parsed_body((const void **)&pChar, &size_);
+    auto end1   = system_clock::now();
+auto duration1 = duration_cast<microseconds>(end1 - start);
+printf(" req->get_parsed_body process time1 is %d ms. \n", (duration1)/1000);
+
+
+    // 2 create bert task 
+    ParallelWork *pwork = Workflow::create_parallel_work(nullptr);
+    typedef WFThreadTaskFactory<MMInput, MMOutput> MMFactory;
+    MMTask *task = MMFactory::create_thread_task("bert_task",
+                    bert_forward,
+                    http_callback);
+    // 3 create input & output
+
+    int S = tmp_sentence_len;
+    int Bmax = tmp_batch_size;
+
+    MMInput *input = task->get_input();
+    MMOutput *output = task->get_output();
+    //3.2 choose free pBert(on different device)
+
+    
+   
+
+    input->inputDims.nbDims = 2;
+    input->inputDims.d[0] = Bmax;
+    input->inputDims.d[1] = S ;
+    output->output.resize(1 * Bmax * S);
+    output->output2.resize(1 * Bmax * S);
+    output->output3.resize(1 * Bmax * S);
+    output->output4.resize(1 * Bmax * S);
+    output->output5.resize(1 * Bmax * 3);
+    
+
+#if 0
+    auto js = json::parse(pChar);
+
+    auto end2   = system_clock::now();
+    auto duration2 = duration_cast<microseconds>(end2 - start);
+    printf("json::parse process time1 is %d ms. \n", (duration2)/1000);
+        
 #define set_weights(dst, name, data_) \
     dst.type = DataType::kINT32;\
     dst.count = js["inputs"][name].size();\
@@ -330,48 +500,81 @@ void process2(WFHttpTask *proxy_task, Bert** ppBert)
         data_.push_back(js["inputs"][name][i]);\
     dst.values = data_.data();
 
-	
-    int S = 200;
-    int Bmax = 1;
-	
-	MMInput *input = task->get_input();
-	MMOutput *output = task->get_output();
-	
-	//3.2 choose free pBert(on different device)
-	input->pBert = getFreeBert(ppBert);
-	
-	input->inputDims.nbDims = 2;
-    input->inputDims.d[0] = 1;
-    input->inputDims.d[1] = 200;
-    output->output.resize(2 * Bmax * S);
-	
-	set_weights(input->inputIds, "input_ids", input->data_ids);
+    set_weights(input->inputIds, "input_ids", input->data_ids);
     set_weights(input->inputMasks, "input_mask", input->data_masks);
     set_weights(input->segmentIds, "segment_ids", input->data_segs);
-	
-	
+
+#else
+    rapidjson::Document doc;
+    rapidjson::ParseResult result = doc.Parse<rapidjson::kParseStopWhenDoneFlag>(pChar);
+    
+    if (!result) {
+    
+    printf("JSON parse error: %s (%u)", rapidjson::GetParseError_En(result.Code()), result.Offset());
+    return;
+        }
+
+#if 0
+#define set_weights(dst, name, data_,num) \
+        dst.type = DataType::kINT32;\
+        const rapidjson::Value& array##num = doc["inputs"][name];\
+        size_t len##num = array##num.Size();\
+        dst.count = len##num;\
+        for(int i = 0;i < len##num; i++)\
+            {data_.push_back(array##num[i].GetInt());}\
+        dst.values = data_.data();
+#else
+#define set_weights(dst, name, data_,num) \
+        dst.type = DataType::kINT32;\
+        const rapidjson::Value& array##num = doc["inputs"][name];\
+        size_t len##num = array##num.Size();\
+        dst.count = len##num;\
+        for(int i = 0;i < len##num; i++)\
+        {\
+            for(auto& v: array##num[i].GetArray())\
+            {\
+                data_.push_back(v.GetInt());\
+            }\
+        }\
+        dst.values = data_.data();
+
+
+#endif
+
+
+    set_weights(input->inputIds, "input_ids", input->data_ids,1);
+    set_weights(input->inputMasks, "input_mask", input->data_masks,2);
+    set_weights(input->segmentIds, "segment_ids", input->data_segs,3);
+#endif
+
+
+
+
+#if 0
     for(int i =0; i < input->inputIds.count; i++)
     {
-       if((((int*)input->inputIds.values)[i])  > 21120)
-         (((int*)input->inputIds.values)[i]) = 20000;
+       if((((int*)input->inputIds.values)[i])  > 21127)
+         {(((int*)input->inputIds.values)[i]) = 21127;
+           printf("index is out of border, error!\n");
+        }
     }
+#endif
+    input->pBert = getFreeBert(ppBert);
+    // 4 create series
+    SeriesWork *series = series_of(proxy_task);
+    // SeriesWork *series = Workflow::create_series_work(task, nullptr);
 
-	
-	//4 create series
-	SeriesWork *series = series_of(proxy_task);
-	//SeriesWork *series = Workflow::create_series_work(task, nullptr);
+    tutorial_series_context *context = new tutorial_series_context;
+    context->url = req->get_request_uri();
+    context->proxy_task = proxy_task;
 
-	tutorial_series_context *context = new tutorial_series_context;
-	context->url = req->get_request_uri();
-	context->proxy_task = proxy_task;
-
-	series->set_context(context);
-	series->set_callback([](const SeriesWork *series) {
-		delete (tutorial_series_context *)series->get_context();
-	});
-	#if 1
-	*series << task;
-	#else
+    series->set_context(context);
+    series->set_callback([](const SeriesWork *series) {
+        delete (tutorial_series_context *)series->get_context();
+    });
+#if 1
+    *series << task;
+#else
 		
     pwork->add_series(series);
 
@@ -389,7 +592,11 @@ void process2(WFHttpTask *proxy_task, Bert** ppBert)
 		pthread_cond_signal(&cond);
 		pthread_mutex_unlock(&mutex);
 	});
-	#endif
+#endif
+auto end   = system_clock::now();
+auto duration = duration_cast<microseconds>(end - start);
+printf(" request process time1 is %d ms. \n", (duration)/1000);
+
 }
 
 #endif
@@ -548,50 +755,43 @@ out << gReString << std::endl;
 out.flush();
 out.close();
 #endif
-	unsigned short port;
+    unsigned short port;
 
-	if (argc != 2)
-	{
-		fprintf(stderr, "USAGE: %s <port>\n", argv[0]);
-		exit(1);
-	}
-       
-        const char *root = (argc >= 3 ? argv[2] : ".");
-		//vector<Bert*> pBertVec;
-		//pBertVec.resize(
-		//Bert* ppBert[deviceCounts];
-        //Bert* pBert = createMyBert(2);
-		//for(int i = 0; i < deviceCounts; i++)
-		//{
-		//	pBertVec.push_back(createMyBertIns(i+2));
-		//}
-		for(int i = 0; i < deviceCounts; i++)
-		{
-		createThreadBertIns(i+2);
-		pthread_mutex_lock(&mutex_);
-		pthread_cond_wait(&cond_, &mutex_);
-		
-		pthread_mutex_unlock(&mutex_);
-		}
-		Bert** ppBert = pBertVec.data();
-		//ppBert[1] = createMyBert(3);
-        auto&& proc = std::bind(process2, std::placeholders::_1, ppBert);
+    if (argc != 2)
+    {
+        fprintf(stderr, "USAGE: %s <port>\n", argv[0]);
+        exit(1);
+    }
 
-	signal(SIGINT, sig_handler);
+    const char *root = (argc >= 3 ? argv[2] : ".");
 
-	WFHttpServer server(proc);
-	port = atoi(argv[1]);
-	if (server.start(port) == 0)
-	{
-		pause();
-		server.stop();
-	}
-	else
-	{
-		perror("Cannot start server");
-		exit(1);
-	}
+    for(int i = 0; i < deviceCounts; i++)
+    {
+        createThreadBertIns(i+2);
+        pthread_mutex_lock(&mutex_);
+        pthread_cond_wait(&cond_, &mutex_);
 
-	return 0;
+        pthread_mutex_unlock(&mutex_);
+    }
+    Bert** ppBert = pBertVec.data();
+    //ppBert[1] = createMyBert(3);
+    auto&& proc = std::bind(process2, std::placeholders::_1, ppBert);
+
+    signal(SIGINT, sig_handler);
+
+    WFHttpServer server(proc);
+    port = atoi(argv[1]);
+    if (server.start(port) == 0)
+    {
+        pause();
+        server.stop();
+    }
+    else
+    {
+        perror("Cannot start server");
+        exit(1);
+    }
+
+    return 0;
 }
 

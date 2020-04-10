@@ -48,14 +48,15 @@ bool Bert::getRunInFp16()
     return runInFp16_;
 }
 
-string Bert::getOutputName()
+string Bert::getOutputName(int index)
 {
-    return outputName_;
+    return outputName_[index];
 }
-void Bert::setOutputName(string outputName)
+void Bert::addOutputName(string outputName)
 {
-    outputName_= outputName;
+    outputName_.push_back(outputName);
 }
+
 
 int Bert::getDeviceId()
 {
