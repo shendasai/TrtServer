@@ -4,10 +4,9 @@ import sys
 import requests
 import json
 import time
-import pdb
+
 #http://10.144.120.27:8543/v1/models/yesno_model:predict
-#def get_model_outputs(url='http://10.144.120.27:8543/v1/models/yesno_model:predict',max_seq_len=40):
-def get_model_outputs(url='http://10.144.44.35:20020',max_seq_len=40):
+def get_model_outputs(url='http://10.144.120.27:8543/v1/models/yesno_model:predict',max_seq_len=40):
     input_id = [101, 6821, 3221, 671, 702, 3844, 6407, 4638, 1368, 2094, 102, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     input_mask = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -27,9 +26,6 @@ def get_model_outputs(url='http://10.144.44.35:20020',max_seq_len=40):
         input_ids.append(input_id)
         input_masks.append(input_mask)
         segment_ids.append(segment_id)
-    #    input_ids.extend(input_id)
-     #   input_masks.extend(input_mask)
-      #  segment_ids.extend(segment_id)
 
     data = {
         "signature_name": "serving_default",
@@ -40,11 +36,9 @@ def get_model_outputs(url='http://10.144.44.35:20020',max_seq_len=40):
             "training": False,
         }
     }
-    #pdb.set_trace()
-    start = time.time()#print(get_model_outputs())
+
     response = requests.post(url=url, data=json.dumps(data))
-    print("rest cost :"+str((time.time()-start)*float(1000)))
-#    print(response.text)
+    #print(response.text)
     #outputs = json.loads(response.text)['outputs']
     #print(outputs)
     #return outputs
@@ -55,7 +49,7 @@ if __name__=='__main__':
     # for i in range(100):run('10.144.120.27',port=8530,model='intent_model',signature_name='serving_default',max_seq_len=300)
     # print("grpc cost :"+str((time.time()-start)/float(100)))#print(get_model_outputs())
     # start = time.time()#print(get_model_outputs())
-    for i in range(1):get_model_outputs(max_seq_len=200)
-    #print("rest cost :"+str((time.time()-start)*float(1000)))#print(get_model_outputs())
+    for i in range(100):get_model_outputs(max_seq_len=200)
+    print("rest cost :"+str((time.time()-start)*float(1000)))#print(get_model_outputs())
     # print(" max grpc time : "+str(max_grpc_time))
     # print("min grpc time "+str(min_grpc_time))

@@ -1,5 +1,5 @@
 #coding:utf-8
-
+import threading
 import sys
 import requests
 import json
@@ -50,12 +50,40 @@ def get_model_outputs(url='http://10.144.44.35:20020',max_seq_len=40):
     #return outputs
     return
 
+def music():
+    for i in range(100):get_model_outputs(max_seq_len=200)
+threads = []
+t1 = threading.Thread(target = music)
+threads.append(t1)
+t2 = threading.Thread(target = music)
+threads.append(t2)
+t3 = threading.Thread(target = music)
+threads.append(t3)
+t4 = threading.Thread(target = music)
+threads.append(t4)
+t5 = threading.Thread(target = music)
+threads.append(t5)
+t6 = threading.Thread(target = music)
+threads.append(t6)
+t7 = threading.Thread(target = music)
+threads.append(t7)
+t8 = threading.Thread(target = music)
+threads.append(t8)
+t9 = threading.Thread(target = music)
+threads.append(t9)
+ta = threading.Thread(target = music)
+threads.append(ta)
 if __name__=='__main__':
     start = time.time()#print(get_model_outputs())
     # for i in range(100):run('10.144.120.27',port=8530,model='intent_model',signature_name='serving_default',max_seq_len=300)
     # print("grpc cost :"+str((time.time()-start)/float(100)))#print(get_model_outputs())
     # start = time.time()#print(get_model_outputs())
-    for i in range(1):get_model_outputs(max_seq_len=200)
+#    for i in range(1):get_model_outputs(max_seq_len=200)
     #print("rest cost :"+str((time.time()-start)*float(1000)))#print(get_model_outputs())
     # print(" max grpc time : "+str(max_grpc_time))
     # print("min grpc time "+str(min_grpc_time))
+    for t in threads:
+        t.setDaemon(True)
+        t.start()
+    t.join()
+    print("-----------> final cost :"+str((time.time()-start)*float(1000))) 

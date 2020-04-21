@@ -40,10 +40,25 @@ def get_model_outputs(url='http://10.144.44.35:20020',max_seq_len=40):
             "training": False,
         }
     }
+    f = open("Test.txt")              
+    line = f.readline()              
+    while line: 
+        print(line)                       
+        with open(line[:-1],'r') as load_f:
+            load_dict = json.load(load_f)
+            start = time.time()#print(get_model_outputs())
+            response = requests.post(url=url, data=json.dumps(load_dict))
+            print("rest cost :"+str((time.time()-start)*float(1000)))
+            outputs = json.loads(response.text)['outputs']
+            with open(line[:-1]+".trt.output","w") as f2:
+                json.dump(outputs,f2)
+        line = f.readline() 
+    f.close() 
+    
     #pdb.set_trace()
-    start = time.time()#print(get_model_outputs())
-    response = requests.post(url=url, data=json.dumps(data))
-    print("rest cost :"+str((time.time()-start)*float(1000)))
+    #start = time.time()#print(get_model_outputs())
+    #response = requests.post(url=url, data=json.dumps(data))
+    #print("rest cost :"+str((time.time()-start)*float(1000)))
 #    print(response.text)
     #outputs = json.loads(response.text)['outputs']
     #print(outputs)
