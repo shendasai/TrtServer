@@ -210,7 +210,8 @@ Bert* createMyBert(int deviceId)
     int Bmax = tmp_batch_size;
 
     Bert* pBert = createBert("QA");
-    pBert->setParam(numHeads,Bmax,S,true);
+    pBert->setParam(numHeads,Bmax,S,false); //fp32
+    //pBert->setParam(numHeads,Bmax,S,true); //fp16
     pBert->setDeviceId(deviceId);
     pBert->init(weightsPath);
     return pBert;
@@ -258,13 +259,13 @@ void http_callback(MMTask *task)
 
 
     HttpRequest *req = context->proxy_task->get_req();
-
+#if 0
     char buf[8192];
     int len;
     len = snprintf(buf, 8192, "<p>%s %s %s</p>", req->get_method(),
             req->get_request_uri(), req->get_http_version());
     proxy_resp->append_output_body(buf, len);
-
+#endif
 
     MMOutput *pOutput = task->get_output();
     MMInput *pIn = task->get_input();
@@ -343,7 +344,7 @@ void http_callback(MMTask *task)
     writer.Key("outputs");  
     
     writer.StartObject();
-
+    writer.SetMaxDecimalPlaces(5); // precision of  5 after dot
     writer_json_prob(writer, "start_logits", pOutput->output, sentence_len);
     writer_json_prob(writer, "end_logits", pOutput->output2, sentence_len);
     writer_json_prob(writer, "start_prob", pOutput->output3, sentence_len);
@@ -379,7 +380,7 @@ void http_callback(MMTask *task)
     proxy_resp->append_output_body(jOut5.dump(2).c_str(), jOut5.dump(2).size());
 
     #endif
-    pIn->pBert->unlock();
+    //pIn->pBert->unlock();
     //pthread_mutex_unlock(&mutex_);
 }
 void bert_forward(const MMInput *in, MMOutput *out)
@@ -391,6 +392,7 @@ void bert_forward(const MMInput *in, MMOutput *out)
 
     auto end   = system_clock::now();
     auto duration = duration_cast<microseconds>(end - start);
+    in->pBert->unlock();
     printf(" forward process time1 is %d ms. \n", (duration)/1000);
 }
 
@@ -423,14 +425,14 @@ const int deviceCounts =1;
 default_random_engine e;
 Bert* getFreeBert(Bert** ppBert)
 {
-#if 0
+#if 1
     while(true)
     {
     for(int i = 0; i < deviceCounts ; i++)
     {
-    	if(ppBert[i]->trylock() == 0)
-    	//if(pthread_mutex_trylock(&mutex_)==0)
-    		return ppBert[i];
+      if(ppBert[i]->trylock() == 0)
+      //if(pthread_mutex_trylock(&mutex_)==0)
+        return ppBert[i];
     }
 
 
@@ -445,6 +447,8 @@ Bert* getFreeBert(Bert** ppBert)
 }
 void process2(WFHttpTask *proxy_task, Bert** ppBert)
 {
+    printf(" process2 start s. \n");
+
     auto start   = system_clock::now();
     
 
@@ -453,6 +457,7 @@ void process2(WFHttpTask *proxy_task, Bert** ppBert)
     const char* pChar = NULL;
     size_t size_ = 0;
     bool ret = req->get_parsed_body((const void **)&pChar, &size_);
+    
     auto end1   = system_clock::now();
 auto duration1 = duration_cast<microseconds>(end1 - start);
 printf(" req->get_parsed_body process time1 is %d ms. \n", (duration1)/1000);
@@ -513,7 +518,26 @@ printf(" req->get_parsed_body process time1 is %d ms. \n", (duration1)/1000);
     printf("JSON parse error: %s (%u)", rapidjson::GetParseError_En(result.Code()), result.Offset());
     return;
         }
+#if 0
+    //save
+    rapidjson::StringBuffer buffer2;
 
+  buffer2.Clear();
+
+  rapidjson::Writer<rapidjson::StringBuffer> writer2(buffer2);
+  doc.Accept(writer2);
+
+    std::string tmp_(buffer2.GetString());
+    //std::ofstream out("aa.txt");
+    std::string tmp2 = "ha.txt";
+    auto now_ms = std::chrono::time_point_cast<std::chrono::milliseconds>(start);
+auto epoch = now_ms.time_since_epoch();
+auto value = std::chrono::duration_cast<std::chrono::milliseconds>(epoch);
+long duration_ = value.count();
+    std::ofstream out(std::to_string(duration_));
+    out << tmp_;
+     out << std::endl;
+#endif
 #if 0
 #define set_weights(dst, name, data_,num) \
         dst.type = DataType::kINT32;\
@@ -767,7 +791,7 @@ out.close();
 
     for(int i = 0; i < deviceCounts; i++)
     {
-        createThreadBertIns(i+2);
+        createThreadBertIns(i);
         pthread_mutex_lock(&mutex_);
         pthread_cond_wait(&cond_, &mutex_);
 
