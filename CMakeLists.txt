@@ -22,8 +22,10 @@ project(cmake_and_cuda LANGUAGES CXX CUDA)
 
 find_package(OpenSSL REQUIRED)
 #find_package(workflow REQUIRED CONFIG HINTS ..)
-include_directories(${OPENSSL_INCLUDE_DIR} ${WORKFLOW_INCLUDE_DIR} /usr/local/cuda-10.0/include ./bert_inc /home/odin/shendasai/TensorRT6/TensorRT-6.0.1.5/include/)
-link_directories(${WORKFLOW_LIB_DIR} /home/odin/shendasai/lib/protobuf/protobuf-3.8.0/src/.libs/ /usr/local/cuda-10.0/lib64 /home/odin/shendasai/TensorRT6/TensorRT-6.0.1.5/lib ./bert_lib /home/odin/shendasai/CUDNN_7.6.3/cuda/lib64)
+include_directories(${OPENSSL_INCLUDE_DIR} ${WORKFLOW_INCLUDE_DIR} /usr/local/cuda-10.0/include ./bert_inc /home/odin/shendasai2/tensorrt7/TensorRT-7.0.0.11/include/)
+link_directories(${WORKFLOW_LIB_DIR} /home/odin/shendasai/lib/protobuf/protobuf-3.8.0/src/.libs/ /usr/local/cuda-10.0/lib64 /home/odin/shendasai2/tensorrt7/TensorRT-7.0.0.11/lib/ ./bert_lib /home/odin/shendasai/CUDNN_7.6.3/cuda/lib64)
+#include_directories(${OPENSSL_INCLUDE_DIR} ${WORKFLOW_INCLUDE_DIR} /usr/local/cuda-10.0/include ./bert_inc /home/odin/shendasai/TensorRT6/TensorRT-6.0.1.5/include/)
+#link_directories(${WORKFLOW_LIB_DIR} /home/odin/shendasai/lib/protobuf/protobuf-3.8.0/src/.libs/ /usr/local/cuda-10.0/lib64 /home/odin/shendasai/TensorRT6/TensorRT-6.0.1.5/lib ./bert_lib /home/odin/shendasai/CUDNN_7.6.3/cuda/lib64)
 
 
 
@@ -43,6 +45,7 @@ set(BERT_LIBS
     cublas
     nvinfer
     nvinfer_plugin
+    nvonnxparser
     pthread
     z
 )
@@ -73,7 +76,8 @@ link_directories(
     /usr/local/cuda-10.0/lib64
     /workspace/tensorrt/lib
     ./lib
-    /home/odin/shendasai/TensorRT6/TensorRT-6.0.1.5/lib
+    #/home/odin/shendasai/TensorRT6/TensorRT-6.0.1.5/lib
+    /home/odin/shendasai2/tensorrt7/TensorRT-7.0.0.11/lib
 )
 
 add_library(common SHARED

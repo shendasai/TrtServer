@@ -1711,7 +1711,7 @@ DEFINE_BUILTIN_OP_IMPORTER(SkipLayerNorm)
     
     //OnnxAttrs attrs(node, ctx);  
     //const int hiddenSize = attrs.get<int>("hiddenSize");
-    const int hiddenSize = wgamma.getDimensions().d[0];
+    const int hiddenSize = inputs.at(3).shape().d[0];
 
     test::SkipLayerNormPluginDynamic skipln_plug("skipln", hiddenSize, wbeta, wgamma);
     ITensor* skiplnInputs[2] = {inputTensor, skip};
@@ -1745,8 +1745,10 @@ DEFINE_BUILTIN_OP_IMPORTER(QkvToContext)
        
        OnnxAttrs attrs(node, ctx);  
        //const int hiddenSize = attrs.get<int>("hiddenSize");
+       //const int numHeads = attrs.get<int>("numAttentionHeads");
+//       const int hiddenSize = 768;
        const int hiddenSize = inputs.at(0).shape().d[2];
-       const int numHeads = attrs.get<int>("numAttentionHeads");
+       const int numHeads = 12;
        const int headSize = hiddenSize / numHeads;
        assert(hiddenSize % numHeads == 0);
 

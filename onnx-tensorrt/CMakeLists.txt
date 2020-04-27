@@ -23,7 +23,7 @@ project(onnx2trt LANGUAGES CXX C)
 
 set(CUDNN_ROOT_DIR "/home/odin/shendasai/CUDNN")
 set(ONNX2TRT_ROOT ${PROJECT_SOURCE_DIR})
-include_directories("../plugins")
+include_directories("../plugins" "/usr/local/cuda/include")
 link_directories("/home/odin/shendasai/CUDNN/lib64" "../build")
 # Set C++11 as standard for the whole project
 set(CMAKE_CXX_STANDARD  11)
