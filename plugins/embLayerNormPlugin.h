@@ -21,6 +21,7 @@
 #include "NvInferRuntime.h"
 #include <string>
 #include <vector>
+using namespace nvinfer1;
 namespace bert
 {
 

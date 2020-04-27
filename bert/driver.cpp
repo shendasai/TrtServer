@@ -17,6 +17,7 @@
 #include "driver.h"
 #include "cuda_profiler_api.h"
 #include <iostream>
+#include "OnnxParser.h"
 
 using namespace nvinfer1;
 using namespace samplesCommon;
@@ -91,6 +92,26 @@ void Driver::init(const HostTensorMap& params)
 
     allocateBindings();
 }
+
+void Driver::initByOnnx(std::string modelFile)
+{
+
+    IBuilderConfig* config = getBuilderConfig();
+    
+    OnnxParser onnxParser;
+    gLogInfo << "Building Engine..." << endl;
+    onnxParser.getEngine(modelFile, config, &mEngine);
+    gLogInfo << "Done building engine." << endl;
+
+
+    assert(mEngine);
+    mContext = (mEngine->createExecutionContext());
+    assert(mContext);
+
+    allocateBindings();
+
+}
+
 
 void Driver::buildNetwork(INetworkDefinition* network, const HostTensorMap& params)
 {

@@ -65,6 +65,47 @@ void BertQA::init(string weightsPath)
         printf("kernel launch failed with error \"%s\".\n",cudaGetErrorString(cudaerr));  
 
 }
+void BertQA::initByOnnx(string modelFile)
+{
+    //1. load weight
+    cudaSetDevice(getDeviceId());
+    cudaStreamCreate(&stream_);
+    
+
+    //2. Prepare the TRT Network
+    //2.1 Create optimization profiles. In this case, we only create a single profile for the shape we care about.
+    //sds: the input is fixed , 20200318.
+    const auto profile = std::make_tuple(Dims{2, getBMax(), getS()}, Dims{2, getBMax(), getS()}, Dims{2, getBMax(), getS()});
+    OptProfileMap optProfileMap = {std::make_pair(kMODEL_INPUT0_NAME, profile),
+        std::make_pair(kMODEL_INPUT1_NAME, profile), std::make_pair(kMODEL_INPUT2_NAME, profile)};
+    OptProfiles optProfiles = {optProfileMap};
+
+    //2.2 create driver
+    pBertDriver= new BERTDriver(getNumHeads(), getRunInFp16(), 5000_MiB, optProfiles);
+
+    //2.3 Build the TRT Engine
+    pBertDriver->initByOnnx(modelFile);
+
+
+    // 4.set output layer
+    #if 0
+    addOutputName("cls_start_logits");
+    addOutputName("cls_end_logits");
+    addOutputName("start_prob");
+    addOutputName("end_prob");
+    addOutputName("predict_prob");
+    #else
+
+    #endif
+    
+    cudaError_t cudaerr = cudaDeviceSynchronize();
+    if (cudaerr != cudaSuccess)
+    printf("kernel launch failed with error \"%s\".\n",cudaGetErrorString(cudaerr));  
+
+}
+
+
+
 
 
 void BertQA::forward(Weights& inputIds, Weights& segmentIds, Weights& inputMasks, Dims& inputDims, std::vector<float>& output)

@@ -78,6 +78,7 @@ struct Driver
     virtual void allocateBindings();
 
     void init(const HostTensorMap& params);
+	void initByOnnx(std::string modelFile);
 
     void h2d(const HostTensorMap& inCfg, cudaStream_t stream);
 
