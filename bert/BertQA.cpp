@@ -177,8 +177,8 @@ void BertQA::forward2(Weights& inputIds, Weights& segmentIds, Weights& inputMask
 
 
     
-    pBertDriver->benchmark(inCfg, outCfg, B, stream_, timesTotal, timesCompute, false);
-    //pBertDriver->benchmark(inCfg, outCfg, B, stream_, timesTotal, timesCompute, true);
+    //pBertDriver->benchmark(inCfg, outCfg, B, stream_, timesTotal, timesCompute, false);
+    pBertDriver->benchmark(inCfg, outCfg, B, stream_, timesTotal, timesCompute, true);
 
 
     //transposeLogits(output, B, S);
