@@ -1,5 +1,5 @@
 # TrtServer
-基于workflow搭建的tensort server。
+基于sogou workflow搭建的tensort server。(sogou workflow地址: https://github.com/sogou/workflow.git)
 基于Tensorrt 7;
 主要支持Bert模型。
 
